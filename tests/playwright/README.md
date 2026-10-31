@@ -71,3 +71,24 @@ These files are not part of the PHP runtime and must not be deployed to the prod
     ```bash
     npm run test:e2e:oris-errors -- --grep 'registration deletion preserves the local entry after organiser removal'
     ```
+
+## Finance authorization regression
+
+`finance-claim-orphan-auth.spec.js` covers PR #87 (`08dcd65`): claim ownership,
+finance permissions, rejected writes, POST-only mutations, hidden/invalid assignment
+targets, HTML escaping, and successful claim and orphan-payment operations.
+Run it with:
+
+```bash
+npx playwright test tests/playwright/finance-claim-orphan-auth.spec.js --project=chromium --workers=1
+```
+
+This dev/test-only spec reads the local PHP `www/cfg/_cfg.php` database settings
+and uses `tst_` tables. For a remote test stack, override them with
+`PLAYWRIGHT_DB_HOST`, `PLAYWRIGHT_DB_PORT`, `PLAYWRIGHT_DB_USER`,
+`PLAYWRIGHT_DB_PASSWORD`, and `PLAYWRIGHT_DB_NAME` as needed. Use a development
+or autotest database. It reserves payment/bank transaction ID `870001` and hidden
+user ID `5987`, resets its fixtures before each test, and removes them afterward.
+Payments have zero amounts to avoid affecting shared member balances. It does
+not modify bank mock settings. Like all files in this directory, it must not be
+deployed into the productive web root.
