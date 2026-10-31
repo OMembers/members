@@ -55,6 +55,19 @@ docker compose -p members-dev -f docker-compose.dev.yml exec web npm run mock:or
 
 ## Automatické testy
 
+The root `.dockerignore` excludes local database storage (`db_data/`), installed
+Node dependencies, logs, test reports, and Git metadata from Docker builds.
+Database initialization SQL under `docker/db_init/` remains available to Compose.
+
+At container startup, a missing `www/.htaccess` is copied from
+`www/.htaccess.default.http` in the repository mounted by Compose. Existing files
+are preserved; the image build does not copy or initialize `.htaccess` files.
+
+Docker Apache serves HTTP and disables production `.htaccess` rules with
+`AllowOverride None`, including the HTTPS redirect. The mail-header setting is
+applied in the Docker Apache configuration instead. This configuration is for
+dev/test/CI only; keep Docker files outside the productive web root.
+
 V kořenovém adresáři `members` spusť:
 
 ```bash

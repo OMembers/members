@@ -1,0 +1,12 @@
+# Local database storage is mounted by Compose, never copied into images.
+/db_data/
+
+# Dependencies are installed inside the image.
+/node_modules/
+
+# Local metadata and generated output.
+/.git/
+/logs/
+/www/logs/
+/playwright-report/
+/test-results/
