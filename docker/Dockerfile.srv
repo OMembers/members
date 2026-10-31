@@ -10,11 +10,19 @@ RUN sed -ri 's/^Listen 80$/Listen 10100/' /etc/apache2/ports.conf \
 # Create log directory
 RUN mkdir -p /var/www/html/members/www/logs && chown -R www-data:www-data /var/www/html/members/www/logs
 
+COPY docker/init-htaccess.sh /usr/local/bin/members-init-htaccess.sh
+RUN chmod +x /usr/local/bin/members-init-htaccess.sh
+
+ENTRYPOINT ["/usr/local/bin/members-init-htaccess.sh", "docker-php-entrypoint"]
+
 # Add Apache alias for /members. Only the productive runtime is web-accessible.
+# Ignore production .htaccess rules: Docker serves HTTP without TLS.
 RUN echo '\
 Alias /members /var/www/html/members/www\n\
 <Directory /var/www/html/members/www>\n\
     Options Indexes FollowSymLinks\n\
+    AllowOverride None\n\
+    php_flag mail.add_x_header Off\n\
     Require all granted\n\
 </Directory>' \
     > /etc/apache2/conf-available/members.conf \
@@ -64,8 +72,9 @@ RUN npm ci \
 COPY docker/entrypoint.sh /usr/local/bin/members-entrypoint.sh
 RUN sed -i 's/\r$//' /usr/local/bin/members-entrypoint.sh \
     && chmod +x /usr/local/bin/members-entrypoint.sh
-    
-ENTRYPOINT ["/usr/local/bin/members-entrypoint.sh"]
+
+ENTRYPOINT ["/usr/local/bin/members-init-htaccess.sh", "/usr/local/bin/members-entrypoint.sh"]
+
 
 FROM autotest AS dev
 
