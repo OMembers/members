@@ -113,7 +113,7 @@ test.describe('Member race entry authorization', () => {
     expect(entryOf(detail, state.member.user_id)).toBeUndefined();
   });
 
-  test('member can still enter and cancel their own entry', async ({ browser }) => {
+  test('member can still enter their own entry', async ({ browser }) => {
     await withRole(browser, 'member', async (page) => {
       const result = await postFormInSession(
         page,
@@ -123,7 +123,59 @@ test.describe('Member race entry authorization', () => {
       expect(result.url).not.toContain('error.php');
     });
     expect(entryOf(await getRaceDetail(browser, state.race.id), state.member.user_id)?.category).toBe('H21');
+  });
 
+  test('member can edit their own entry', async ({ browser }) => {
+    state.memberEntryId = await withRole(browser, 'registrar', async (page) => {
+      const response = await page.request.get(`./api_race_entry.php?id_race=${state.race.id}`);
+      expect(response.ok()).toBeTruthy();
+      const rows = await response.json();
+      return Number(rows.find((row) => Number(row.id_user) === state.member.user_id)?.id);
+    });
+    expect(state.memberEntryId).toBeGreaterThan(0);
+
+    await withRole(browser, 'member', async (page) => {
+      const result = await postFormInSession(
+        page,
+        './us_race_regon_exc.php',
+        entryFields(state.race.id, state.member.user_id, {
+          id_z: String(state.memberEntryId),
+          kat: 'D21',
+        }),
+      );
+      expect(result.ok).toBeTruthy();
+      expect(result.url).not.toContain('error.php');
+    });
+    expect(entryOf(await getRaceDetail(browser, state.race.id), state.member.user_id)?.category).toBe('D21');
+  });
+
+  test('member cannot edit their own entry using a different race ID', async ({ browser }) => {
+    const today = new Date();
+    const otherRace = await withRole(browser, 'registrar', (page) => createRace(page, {
+      name: `Playwright own entry auth other race ${state.run.runId}`,
+      date: formatCzDate(addUtcDays(today, 10)),
+      entryDate1: formatCzDate(addUtcDays(today, 5)),
+      eventType: 'T',
+      categories: 'H21;D21;',
+    }));
+
+    await withRole(browser, 'member', async (page) => {
+      const result = await postFormInSession(
+        page,
+        './us_race_regon_exc.php',
+        entryFields(otherRace.id, state.member.user_id, {
+          id_z: String(state.memberEntryId),
+          kat: 'H21',
+        }),
+      );
+      expect(result.ok).toBeTruthy();
+    });
+
+    expect(entryOf(await getRaceDetail(browser, state.race.id), state.member.user_id)?.category).toBe('D21');
+    expect(entryOf(await getRaceDetail(browser, otherRace.id), state.member.user_id)).toBeUndefined();
+  });
+
+  test('member can still cancel their own entry', async ({ browser }) => {
     await withRole(browser, 'member', async (page) => {
       const cancel = await postFormInSession(page, './us_race_regoff_exc.php', {
         id_zav: String(state.race.id),
